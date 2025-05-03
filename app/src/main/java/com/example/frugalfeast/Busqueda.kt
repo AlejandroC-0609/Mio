@@ -1,32 +1,96 @@
 package com.example.frugalfeast
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Button
+import android.text.Editable
+import android.text.TextWatcher
 import android.widget.ImageView
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.frugalfeast.databinding.ActivityBusquedaBinding
+import com.google.firebase.firestore.FirebaseFirestore
 
-class Busqueda : AppCompatActivity() {
+class BusquedaActivity : AppCompatActivity(), Adaptador.OnItemClickListener {
+
+    private lateinit var binding: ActivityBusquedaBinding
+    private lateinit var adaptador: Adaptador
+    private var listaBusquedaOriginal = ArrayList<BarraBusqueda>()
+    private var listaBusquedaFiltrada = ArrayList<BarraBusqueda>()
+    private val db = FirebaseFirestore.getInstance()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContentView(R.layout.activity_busqueda)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
+
+        binding = ActivityBusquedaBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        setupRecyclerView()
+        cargarRecetasDesdeFirebase() // ✅ Ahora se llama correctamente esta función
+
+        // Botón para IA
+        val botonIA: ImageView = findViewById(R.id.imageView58)
+        botonIA.setOnClickListener {
+            val intent = Intent(this, PresentacionIA::class.java)
+            startActivity(intent)
         }
-        val botonpreia: ImageView = findViewById(R.id.imageView58)
-        botonpreia.setOnClickListener {
-            Intent(this, PresentacionIA::class.java)
-                .also { welcomeIntent ->
-                    //Launch
-                    startActivity(welcomeIntent)
-                    finish()
+
+        // Barra de búsqueda
+        binding.editTextText9.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                val query = s.toString().trim().lowercase()
+                filterList(query)
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+    }
+
+    private fun setupRecyclerView() {
+        binding.recyclerViewBusqueda.layoutManager = LinearLayoutManager(this)
+        adaptador = Adaptador(listaBusquedaFiltrada, this)
+        binding.recyclerViewBusqueda.adapter = adaptador
+    }
+
+    private fun cargarRecetasDesdeFirebase() {
+        db.collection("recetas")
+            .get()
+            .addOnSuccessListener { result ->
+                listaBusquedaOriginal.clear()
+                for (document in result) {
+                    val receta = document.toObject(BarraBusqueda::class.java)
+                    listaBusquedaOriginal.add(receta)
                 }
+                listaBusquedaFiltrada.clear()
+                listaBusquedaFiltrada.addAll(listaBusquedaOriginal)
+                adaptador.notifyDataSetChanged()
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(this, "Error al cargar recetas: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    private fun filterList(query: String) {
+        listaBusquedaFiltrada.clear()
+        if (query.isEmpty()) {
+            listaBusquedaFiltrada.addAll(listaBusquedaOriginal)
+        } else {
+            for (receta in listaBusquedaOriginal) {
+                if (receta.nombre.lowercase().contains(query)) {
+                    listaBusquedaFiltrada.add(receta)
+                }
+            }
         }
+        adaptador.notifyDataSetChanged()
+    }
+
+    override fun onItemClick(receta: BarraBusqueda) {
+        val intent = Intent(this, PantallaPrincipalReceta::class.java)
+        intent.putExtra("recetaNombre", receta.nombre)
+        startActivity(intent)
     }
 }

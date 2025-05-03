@@ -18,7 +18,7 @@
         android:theme="@style/Theme.FrugalFeast"
         tools:targetApi="31">
         <activity
-            android:name=".Busqueda"
+            android:name=".BusquedaActivity"
             android:exported="false" />
         <activity
             android:name=".InteraccionIA"

@@ -2,6 +2,7 @@ package com.example.frugalfeast
 
 import android.content.Context
 import android.content.Intent
+import android.widget.EditText
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
@@ -29,7 +30,7 @@ class PantallaPrincipal : AppCompatActivity() {
     // Views principales
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navigationView: NavigationView
-    private lateinit var searchView: SearchView
+    private lateinit var editTextBusqueda: EditText
     private lateinit var btnMenu: ImageButton
 
     // Receta del día
@@ -116,7 +117,7 @@ class PantallaPrincipal : AppCompatActivity() {
         // Views principales
         drawerLayout = findViewById(R.id.drawer_layout)
         navigationView = findViewById(R.id.nav_drawer)
-        searchView = findViewById(R.id.search_view)
+        editTextBusqueda = findViewById(R.id.edit_text_busqueda)
         btnMenu = findViewById(R.id.btn_menu)
 
         // Receta del día
@@ -210,19 +211,21 @@ class PantallaPrincipal : AppCompatActivity() {
         txtNombreUsuario.text = usuario?.displayName ?: "Invitado"
     }
 
-    //BUSQUEDA
+    // BUSQUEDA
     private fun setupSearchView() {
-        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String): Boolean {
-                buscarRecetas(query)
-                return true
-            }
+        val editTextBusqueda = findViewById<EditText>(R.id.edit_text_busqueda)
 
-            override fun onQueryTextChange(newText: String): Boolean {
-                return false
+        editTextBusqueda.setOnClickListener {
+            try {
+                val intent = Intent(this@PantallaPrincipal, BusquedaActivity::class.java)
+                startActivity(intent)
+            } catch (e: Exception) {
+                Toast.makeText(this, "Error al iniciar búsqueda", Toast.LENGTH_SHORT).show()
             }
-        })
+        }
     }
+
+
 
     //VISTO RECIENTEMENTE
 
@@ -265,7 +268,7 @@ class PantallaPrincipal : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.btn_explorar_recetas).setOnClickListener {
-            startActivity(Intent(this, Busqueda::class.java))
+            startActivity(Intent(this, BusquedaActivity::class.java))
         }
     }
 
