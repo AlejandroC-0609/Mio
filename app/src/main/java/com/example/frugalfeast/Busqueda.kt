@@ -23,22 +23,19 @@ class BusquedaActivity : AppCompatActivity(), Adaptador.OnItemClickListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
 
         binding = ActivityBusquedaBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         setupRecyclerView()
-        cargarRecetasDesdeFirebase() // ✅ Ahora se llama correctamente esta función
+        cargarRecetasDesdeFirebase()
 
-        // Botón para IA
         val botonIA: ImageView = findViewById(R.id.imageView58)
         botonIA.setOnClickListener {
             val intent = Intent(this, PresentacionIA::class.java)
             startActivity(intent)
         }
 
-        // Barra de búsqueda
         binding.editTextText9.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -61,7 +58,7 @@ class BusquedaActivity : AppCompatActivity(), Adaptador.OnItemClickListener {
             .addOnSuccessListener { result ->
                 listaBusquedaOriginal.clear()
                 for (document in result) {
-                    val receta = document.toObject(BarraBusqueda::class.java)
+                    val receta = document.toObject(BarraBusqueda::class.java)?.copy(id = document.id) ?: BarraBusqueda()
                     listaBusquedaOriginal.add(receta)
                 }
                 listaBusquedaFiltrada.clear()
@@ -73,14 +70,13 @@ class BusquedaActivity : AppCompatActivity(), Adaptador.OnItemClickListener {
             }
     }
 
-    @SuppressLint("NotifyDataSetChanged")
     private fun filterList(query: String) {
         listaBusquedaFiltrada.clear()
         if (query.isEmpty()) {
             listaBusquedaFiltrada.addAll(listaBusquedaOriginal)
         } else {
             for (receta in listaBusquedaOriginal) {
-                if (receta.nombre.lowercase().contains(query)) {
+                if (receta.nombre?.lowercase()?.contains(query) == true) {
                     listaBusquedaFiltrada.add(receta)
                 }
             }
@@ -90,7 +86,7 @@ class BusquedaActivity : AppCompatActivity(), Adaptador.OnItemClickListener {
 
     override fun onItemClick(receta: BarraBusqueda) {
         val intent = Intent(this, PantallaPrincipalReceta::class.java)
-        intent.putExtra("recetaNombre", receta.nombre)
+        intent.putExtra("recetaId", receta.id)
         startActivity(intent)
     }
 }

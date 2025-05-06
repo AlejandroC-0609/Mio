@@ -1,20 +1,14 @@
 package com.example.frugalfeast
 
 import android.os.Bundle
-import android.widget.ImageView
-import android.widget.TextView
-import android.widget.Toast
-import androidx.activity.enableEdgeToEdge
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 
 class PantallaPrincipalReceta : AppCompatActivity() {
+
     private lateinit var imgReceta: ImageView
     private lateinit var nombreReceta: TextView
     private lateinit var tvTiempoReceta: TextView
@@ -22,10 +16,10 @@ class PantallaPrincipalReceta : AppCompatActivity() {
     private lateinit var tvDificultadReceta: TextView
     private lateinit var preparacionReceta: TextView
     private lateinit var listaIngredientes: TextView
-    private lateinit var btnAgregarReceta: ImageView
+    private lateinit var btnAgregarReceta: Button
 
-    private val db = FirebaseFirestore.getInstance()
     private lateinit var auth: FirebaseAuth
+    private val db = FirebaseFirestore.getInstance()
     private var isFavorite = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,60 +38,84 @@ class PantallaPrincipalReceta : AppCompatActivity() {
 
         auth = FirebaseAuth.getInstance()
 
-        // Obtener datos de la receta del intent
         val recetaId = intent.getStringExtra("receta_id") ?: ""
-        val nombre = intent.getStringExtra("receta_nombre") ?: ""
-        val porciones = intent.getStringExtra("receta_porciones") ?: ""
-        val imagenUrl = intent.getStringExtra("receta_imagen") ?: ""
-        val tiempo = intent.getStringExtra("receta_tiempo") ?: ""
-        val dificultad = intent.getStringExtra("receta_dificultad") ?: ""
-        val preparacion = intent.getStringExtra("receta_preparacion") ?: ""
-        val ingredientes = intent.getStringArrayListExtra("receta_ingredientes") ?: emptyList()
-
-        // Configurar UI con los datos de la receta
-        nombreReceta.text = nombre
-
-        if (imagenUrl.isNotEmpty()) {
-            Glide.with(this)
-                .load(imagenUrl)
-                .placeholder(R.drawable.baseline_image_24)
-                .fitCenter()
-                .into(imgReceta)
-        }
-
-        tvTiempoReceta.text = tiempo.toString() + " horas"
-        tvPorcionesReceta.text = porciones.toString() + " porciones"
-        tvDificultadReceta.text = dificultad
-        preparacionReceta.text = preparacion
-
-        val ingredientesTexto = ingredientes.joinToString("\n• ", "• ")
-        listaIngredientes.text = ingredientesTexto
-
-        // Verificar si la receta está guardada como favorita
-        verificarRecetaFavorita(recetaId)
-
-        // Configurar botón de guardar
-        btnAgregarReceta.setOnClickListener {
-            if (isFavorite) {
-                eliminarRecetaFavorita(recetaId)
-            } else {
-                guardarRecetaFavorita(recetaId, nombre, imagenUrl, tiempo, dificultad, preparacion, ingredientes)
-            }
+        if (recetaId.isNotEmpty()) {
+            cargarRecetaDesdeFirebase(recetaId)
+            verificarRecetaFavorita(recetaId)
         }
     }
 
-    private fun verificarRecetaFavorita(recetaId: String) {
-        val userId = auth.currentUser?.uid ?: return
-
-        db.collection("usuarios")
-            .document(userId)
-            .collection("recetas_favoritas")
+    private fun cargarRecetaDesdeFirebase(recetaId: String) {
+        db.collection("Receta")
             .document(recetaId)
             .get()
             .addOnSuccessListener { document ->
-                isFavorite = document.exists()
-                actualizarBotonFavorito()
+                if (document.exists()) {
+                    val nombre = document.getString("nombre") ?: ""
+                    val imagenUrl = document.getString("imagenUrl") ?: ""
+                    val tiempo = document.getString("tiempo") ?: ""
+                    val porciones = document.getString("porciones") ?: ""
+                    val dificultad = document.getString("dificultad") ?: ""
+                    val preparacion = document.getString("preparacion") ?: ""
+                    val ingredientes = document.get("ingredientes") as? List<String> ?: listOf()
+
+                    // Actualizar la UI
+                    nombreReceta.text = nombre
+                    tvTiempoReceta.text = "$tiempo horas"
+                    tvPorcionesReceta.text = "$porciones porciones"
+                    tvDificultadReceta.text = dificultad
+                    preparacionReceta.text = preparacion
+
+                    if (imagenUrl.isNotEmpty()) {
+                        Glide.with(this)
+                            .load(imagenUrl)
+                            .placeholder(R.drawable.baseline_image_24)
+                            .fitCenter()
+                            .into(imgReceta)
+                    }
+
+                    val ingredientesTexto = ingredientes.joinToString("\n• ", "• ")
+                    listaIngredientes.text = ingredientesTexto
+
+                    // Acción del botón de favorito
+                    btnAgregarReceta.setOnClickListener {
+                        if (isFavorite) {
+                            eliminarRecetaFavorita(recetaId)
+                        } else {
+                            guardarRecetaFavorita(
+                                recetaId,
+                                nombre,
+                                imagenUrl,
+                                tiempo,
+                                dificultad,
+                                preparacion,
+                                ingredientes
+                            )
+                        }
+                    }
+
+                } else {
+                    Toast.makeText(this, "Receta no encontrada", Toast.LENGTH_SHORT).show()
+                }
             }
+            .addOnFailureListener {
+                Toast.makeText(this, "Error al cargar receta", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun verificarRecetaFavorita(recetaId: String) {
+        val user = auth.currentUser
+        user?.let {
+            val userId = user.uid
+            val docRef = db.collection("usuarios").document(userId)
+                .collection("recetas_guardadas").document(recetaId)
+
+            docRef.get()
+                .addOnSuccessListener { document ->
+                    isFavorite = document.exists()
+                    btnAgregarReceta.text = if (isFavorite) "Quitar de favoritos" else "Agregar a favoritos"
+                }
+        }
     }
 
     private fun guardarRecetaFavorita(
@@ -109,59 +127,46 @@ class PantallaPrincipalReceta : AppCompatActivity() {
         preparacion: String,
         ingredientes: List<String>
     ) {
-        val userId = auth.currentUser?.uid ?: return
-
-        val recetaFavorita = hashMapOf(
-            "id" to recetaId,
-            "nombre" to nombre,
-            "imagenUrl" to imagenUrl,
-            "tiempo" to tiempo,
-            "dificultad" to dificultad,
-            "preparacion" to preparacion,
-            "ingredientes" to ingredientes,
-            "fechaGuardado" to FieldValue.serverTimestamp()
-        )
-
-        db.collection("usuarios")
-            .document(userId)
-            .collection("recetas_favoritas")
-            .document(recetaId)
-            .set(recetaFavorita)
-            .addOnSuccessListener {
-                isFavorite = true
-                actualizarBotonFavorito()
-                Toast.makeText(this, "Receta guardada en favoritos", Toast.LENGTH_SHORT).show()
-            }
-            .addOnFailureListener { e ->
-                Toast.makeText(this, "Error al guardar receta: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
+        val user = auth.currentUser
+        user?.let {
+            val userId = user.uid
+            val recetaMap = hashMapOf(
+                "nombre" to nombre,
+                "imagenUrl" to imagenUrl,
+                "tiempo" to tiempo,
+                "dificultad" to dificultad,
+                "preparacion" to preparacion,
+                "ingredientes" to ingredientes
+            )
+            db.collection("usuarios").document(userId)
+                .collection("recetas_guardadas").document(recetaId)
+                .set(recetaMap)
+                .addOnSuccessListener {
+                    Toast.makeText(this, "Receta guardada", Toast.LENGTH_SHORT).show()
+                    isFavorite = true
+                    btnAgregarReceta.text = "Quitar de favoritos"
+                }
+                .addOnFailureListener {
+                    Toast.makeText(this, "Error al guardar receta", Toast.LENGTH_SHORT).show()
+                }
+        }
     }
 
     private fun eliminarRecetaFavorita(recetaId: String) {
-        val userId = auth.currentUser?.uid ?: return
-
-        db.collection("usuarios")
-            .document(userId)
-            .collection("recetas_favoritas")
-            .document(recetaId)
-            .delete()
-            .addOnSuccessListener {
-                isFavorite = false
-                actualizarBotonFavorito()
-                Toast.makeText(this, "Receta eliminada de favoritos", Toast.LENGTH_SHORT).show()
-            }
-            .addOnFailureListener { e ->
-                Toast.makeText(this, "Error al eliminar receta: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-    }
-
-    private fun actualizarBotonFavorito() {
-        if (isFavorite) {
-            btnAgregarReceta.setImageResource(R.drawable.bookmark_remove_24dp_e3e3e3_fill0_wght400_grad0_opsz24)
-            btnAgregarReceta.setColorFilter(ContextCompat.getColor(this, R.color.red))
-        } else {
-            btnAgregarReceta.setImageResource(R.drawable.guardado)
-            btnAgregarReceta.setColorFilter(ContextCompat.getColor(this, R.color.black))
+        val user = auth.currentUser
+        user?.let {
+            val userId = user.uid
+            db.collection("usuarios").document(userId)
+                .collection("recetas_guardadas").document(recetaId)
+                .delete()
+                .addOnSuccessListener {
+                    Toast.makeText(this, "Receta eliminada de favoritos", Toast.LENGTH_SHORT).show()
+                    isFavorite = false
+                    btnAgregarReceta.text = "Agregar a favoritos"
+                }
+                .addOnFailureListener {
+                    Toast.makeText(this, "Error al eliminar receta", Toast.LENGTH_SHORT).show()
+                }
         }
     }
 }

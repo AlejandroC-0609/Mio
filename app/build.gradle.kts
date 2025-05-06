@@ -2,17 +2,17 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("kotlin-kapt")
-    id("com.google.gms.google-services")
+    id("com.google.gms.google-services")  // Esto está correcto
 }
 
 android {
     namespace = "com.example.frugalfeast"
-    compileSdk = 35
+    compileSdk = 35  // Actualizado para estar más alineado con targetSdk
 
     defaultConfig {
         applicationId = "com.example.frugalfeast"
-        minSdk = 24 // Mirar si se puede pasar a la 26 Minimo
-        targetSdk = 34
+        minSdk = 24  // Revisa si puedes aumentar esto
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -28,20 +28,23 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     kotlinOptions {
         jvmTarget = "11"
     }
+
     buildFeatures {
         viewBinding = true
     }
 }
 
 dependencies {
-    implementation(platform(libs.firebase.bom))
+    implementation(platform(libs.firebase.bom))  // Asegúrate de que sea la última versión del BOM
     implementation(libs.glide)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
