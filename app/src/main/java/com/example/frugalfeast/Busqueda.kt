@@ -56,7 +56,7 @@ class BusquedaActivity : AppCompatActivity(), Adaptador.OnItemClickListener {
     }
 
     private fun cargarRecetasDesdeFirebase() {
-        db.collection("recetas")
+        db.collection("Receta")
             .get()
             .addOnSuccessListener { result ->
                 listaBusquedaOriginal.clear()
